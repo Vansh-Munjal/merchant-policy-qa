@@ -16,7 +16,7 @@ Each entry has two parts: **Source** is what the documents actually say, and **C
 
 ## 3. Which date governs an event
 - **Source:** Silent. The documents don't say whether the transaction date or the refund date decides which version of 3.3 applies.
-- **Choice:** The whole question is evaluated on as_of_date, and the event is assumed to happen on that date. The refund answer states this assumption explicitly. A sale on 31 Aug with a refund on 1 Sep is a real gap (WHERE_IT_BREAKS #1).
+- **Choice:** The whole question is evaluated on as_of_date, and the event is assumed to happen on that date. The refund answer states this assumption explicitly. If a refund question mentions dates on both sides of item D's effective date (e.g. sale 31 Aug, refund 1 Sep), the answer is CANNOT_ANSWER with both readings, because the documents give no transition rule (eval E25).
 - If no as_of_date is passed, a date written in the question is used, otherwise 15 Aug 2026 (as the assignment says).
 
 ## 4. Superseded and deleted clauses

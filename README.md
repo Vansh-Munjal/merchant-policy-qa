@@ -37,7 +37,7 @@ python3 ask.py "I closed my account yesterday. When will I get my money?" --json
 python3 ask.py "A merchant refunds a customer 3 hours after the sale. Do they get the MDR back?" --date 2026-08-20
 python3 ask.py "A merchant refunds a customer 3 hours after the sale. Do they get the MDR back?" --date 2026-09-05
 
-# Unit tests (16) and evaluation suite (24 cases)
+# Unit tests (16) and evaluation suite (25 cases)
 python3 -m unittest discover -s tests -v
 python3 evaluate.py            # add --verbose to see every answer
 ```
@@ -63,7 +63,7 @@ question, as_of_date
 | `src/policy_engine.py` | `version(clause_id, as_of)` returns the master text, the circular item that replaced it, or *deleted*, along with amendments that are still pending. `FACTS` holds the numbers each clause version states, and a unit test asserts that each one appears word-for-word in its clause. |
 | `src/calculator.py` | `upi_fee()`: MDR = rate × amount, capped, then 18% GST on the MDR outside the cap. All values are `Decimal`, rounded half-up to the paisa. `add_working_days()` skips Sundays. |
 | `src/assistant.py` | The handlers. Each handler reads the clause versions in force, computes the answer, and then **recomputes it using the superseded master text and the FAQ's claims**. |
-| `eval.json`, `evaluate.py` | 24 hand-written cases (14 adversarial) and a scorer that runs the real system. |
+| `eval.json`, `evaluate.py` | 25 hand-written cases (15 adversarial) and a scorer that runs the real system. |
 
 ### Statuses and conflict resolution
 
@@ -82,8 +82,8 @@ There is no LLM, embedding model or network call anywhere (`grep -rE "requests|u
 ## Evaluation results (current)
 
 ```
-Overall pass 24/24 · Status 24/24 · Answer facts 24/24 · Expected citations 24/24
-Citation grounding 89/89 verbatim · Adversarial 14/14
+Overall pass 25/25 · Status 25/25 · Answer facts 25/25 · Expected citations 25/25
+Citation grounding 92/92 verbatim · Adversarial 15/15
 ```
 
 **What that score does and doesn't mean (evaluation limits):**
@@ -105,5 +105,5 @@ Citation grounding 89/89 verbatim · Adversarial 14/14
 - Question understanding is regex-based. Unusual phrasing ("ninety thousand rupees", "is Saturday a working day?") can get a generic or off-target answer (see WHERE_IT_BREAKS.md).
 - The system is stateless. The assignment's Q3 says "Same merchant…", so it must be restated with the merchant's tier; otherwise both tiers are shown.
 - There is no bank-holiday calendar, so calculated dates only skip Sundays and are flagged as earliest-case.
-- One `as_of_date` is used for the whole question. A transaction and a refund on different sides of an effective date are not modelled.
+- One `as_of_date` is used for the whole question. The only exception: a refund question that mentions dates on both sides of the 01 Sep 2026 deletion of 3.3 gets CANNOT_ANSWER instead of a guess.
 - The fact table only covers clauses that exist today. A new circular needs new `FACTS` rows (the grounding test will flag a mismatch, but not a missing row).

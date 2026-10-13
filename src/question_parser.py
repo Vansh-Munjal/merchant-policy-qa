@@ -52,14 +52,20 @@ def _to_amount(num: str, unit: Optional[str]) -> Decimal:
     return value
 
 
-def find_date(text: str) -> Optional[date]:
-    m = _DATE_RE.search(text)
-    if not m:
-        return None
+def _match_to_date(m: re.Match) -> date:
     if m.group(4):
         return date(int(m.group(4)), int(m.group(5)), int(m.group(6)))
     month = m.group(2)[:3].title()
     return datetime.strptime(f"{m.group(1)} {month} {m.group(3)}", "%d %b %Y").date()
+
+
+def find_date(text: str) -> Optional[date]:
+    m = _DATE_RE.search(text)
+    return _match_to_date(m) if m else None
+
+
+def find_all_dates(text: str) -> list[date]:
+    return [_match_to_date(m) for m in _DATE_RE.finditer(text)]
 
 
 def parse(question: str, as_of: date) -> Parsed:

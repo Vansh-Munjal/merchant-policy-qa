@@ -2,22 +2,17 @@
 
 Three concrete cases, each reproduced against the current code (`python3 ask.py "<question>" --date <date>`).
 
-## 1. A refund that crosses the 01 Sep 2026 deletion of clause 3.3
+## 1. "Is Saturday a working day for settlement?" (as_of 2026-08-15)
 
-**Question (no `--date`):** "A customer paid at 11 PM on 31 August 2026 and the merchant refunded 2 hours later on 1 September 2026. Is the MDR returned?"
+**What the system does:** "settle" sends it to the settlement handler, which returns the generic T+0/T+1/T+2 summary with status CONFLICT_RESOLVED. It never answers the yes/no question.
 
-**What the system does:** It picks the *first* date in the question (31 Aug 2026) as as_of_date. It then answers **"Yes … reversed in full (clause 3.3)"** with status ANSWERED.
+**Why it is wrong:** The documents define working days as excluding Sundays and bank holidays (master 1.1), so a Saturday that is not a bank holiday counts as a working day. The answer contains true statements, but none of them answers what was asked.
 
-**Why that is wrong or unsafe:**
-- The refund was initiated on 1 Sep, the day circular item D deleted 3.3. If the refund date governs, the answer is "No".
-- The documents don't say whether the transaction date or the refund date decides which rule applies. The safe answer here is CANNOT_ANSWER, or at least a flagged conflict.
-- The system models only one date per question, so it can't see that the two events fall on different sides of the effective date.
+**Missing evidence:** Nothing in the documents. This is an engineering gap: routing is keyword-based, and nothing checks that the answer has the same type (yes/no, amount, date) as the question.
 
-**Missing evidence:** Transition rules for item D, i.e. whether it covers transactions before 1 Sep that are refunded after it.
+**Consequence:** An agent pastes a fluent, cited reply that doesn't answer the merchant's question.
 
-**Consequence:** Support tells a merchant the fee will come back when it won't, or the reverse. This creates disputes and manual reversals around the cut-over.
-
-**Fix:** Pull out every event date in the question (transaction, refund). If any amendment's effective date falls between them, return CANNOT_ANSWER and explain both readings. Policy should also state the transition rule.
+**Fix:** Add a question-type classifier and a check that rejects any answer of the wrong type. Add a handler for "is X a working day" based on clauses 1.1 and 1.3.
 
 ## 2. Calculated payout and settlement dates that ignore bank holidays (Q7)
 
@@ -34,30 +29,18 @@ Three concrete cases, each reproduced against the current code (`python3 ask.py 
 
 **Fix:** Add the bank's official holiday calendar as a versioned data file and use it in `calculator.is_working_day`. Policy should restate the working-day definition after circular A.
 
-## 3. Questions that hit a topic keyword but ask something else
+## 3. "Does an insurance merchant need enhanced KYC to accept Rs.1,50,000 in one UPI payment?" (as_of 2026-08-15)
 
-**Questions (as_of 2026-08-15):**
-- (a) "Is Saturday a working day for settlement?"
-- (b) "Does an insurance merchant need enhanced KYC to accept Rs.1,50,000 in one UPI payment?"
-- (c) "What MDR applies to a ninety thousand rupee UPI payment for a large merchant?"
+**What the system does:** The parser sees the phrase "enhanced KYC" and records that the merchant *has* it. The system then returns the 4.2 vs 4.3 contradiction with CANNOT_ANSWER. It never gives the direct answer: "yes, clause 4.4 makes enhanced KYC a precondition for the ₹2,00,000 limit".
 
-**What the system does:**
-- (a) Goes to the settlement handler and returns the generic T+0/T+1/T+2 summary (CONFLICT_RESOLVED). It never says that the documents exclude only Sundays and bank holidays, so a Saturday that isn't a bank holiday counts as a working day.
-- (b) The parser sees the phrase "enhanced KYC" and assumes the merchant *has* it. The system returns the 4.2 vs 4.3 conflict (CANNOT_ANSWER). The direct answer, "yes, 4.4 requires enhanced KYC", is never given.
-- (c) "ninety thousand" isn't parsed as a number, so it returns the rate and cap description with no fee calculation.
+**Why:** Entity extraction is regex-based and can't tell asking about a requirement apart from stating it has been met. A similar parsing gap: "a ninety thousand rupee payment" isn't read as a number, so no fee is calculated.
 
-**Why:**
-- Routing and entity extraction are hand-written regexes.
-- Nothing checks whether the answer actually responds to what was asked; there is only a check on whether the question's words appear in the documents.
-- None of these answers states anything false, but (a) and (b) leave the actual question unanswered while looking confident.
+**Consequence:** Here the system abstains, which is safe, but it misses an answer that is clearly in the documents. In other phrasings the same mistake could wrongly assume KYC is complete and report a higher limit than applies.
 
-**Consequence:** An agent copies a fluent answer that doesn't address what the merchant asked.
+**Fix:** Treat "need/require/must X" as a question about X instead of a fact about the merchant. Add number-word parsing. Optionally, use an LLM only for entity extraction, validate its output against a schema, and keep the arithmetic and citations deterministic.
 
-**Fix:**
-- Add a question-type classifier (yes/no vs amount vs date) and require the answer to match that type.
-- Treat "need/require X" as a question about the requirement, not a statement that X is done.
-- Add number-word parsing.
-- Optionally, an LLM could do only the *entity extraction* step, with its output validated and the arithmetic and citations still deterministic.
+## Fixed since the first version
+- **Refund straddling 01 Sep 2026** ("paid 11 PM on 31 August 2026, refunded 2 hours later on 1 September 2026"). The system used to answer "Yes" based on the first date only. Now, when the question's dates fall on both sides of item D's effective date, it returns CANNOT_ANSWER and explains both readings, because the documents give no transition rule. Covered by eval case E25.
 
 ## Also worth knowing
 - **Statelessness:** The assignment's Q3 ("Same merchant, a Rs.1,50,000 payment") has no tier in it. The system shows both tiers instead of carrying over "large" from Q2.

@@ -24,7 +24,7 @@ from .calculator import add_working_days, fmt_inr, upi_fee, FeeBreakdown
 from .document_loader import DATA_DIR, load_corpus
 from .models import Answer, Citation, Status
 from .policy_engine import FAQ_CLAIMS, PolicyEngine, cite, to_decimal
-from .question_parser import LAKH, Parsed, find_date, parse
+from .question_parser import LAKH, Parsed, find_all_dates, find_date, parse
 from .retriever import Retriever
 
 DEFAULT_AS_OF = date(2026, 8, 15)
@@ -309,6 +309,24 @@ class Assistant:
                   f"(clause 3.1), so the merchant cannot initiate it under the policy.")
             d.cite(cite(v31.base))
             return
+
+        # Sale and refund on different sides of an amendment to 3.3: the documents
+        # don't say whether the transaction date or the refund date governs.
+        dates = sorted(set(find_all_dates(p.text)))
+        if len(dates) >= 2:
+            earliest, latest = dates[0], dates[-1]
+            crossing = [c for c in self._v("3.3", latest).applied
+                        if c.target == "3.3" and earliest < c.effective_from <= latest]
+            if crossing:
+                item = crossing[0]
+                d.cannot_answer = True
+                d.say(f"The events fall on both sides of {_d(item.effective_from)}, when {CIRCULAR_NAME} item "
+                      f"{item.clause_id} deleted clause 3.3. If the transaction date ({_d(earliest)}) governs, the "
+                      f"24-hour reversal in clause 3.3 applies; if the refund date ({_d(latest)}) governs, clause 3.2 "
+                      f"applies without exception and MDR is not returned. The documents do not say which date "
+                      f"governs, so this needs confirmation from the policy owner.")
+                d.cite(cite(v32.base), cite(self.engine.master["3.3"]), cite(item))
+                return
 
         reversal_hours = Decimal(v33.original_facts()["reversal_hours"])
         within = None  # is the refund within the 24-hour window?
