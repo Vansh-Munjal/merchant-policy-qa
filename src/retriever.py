@@ -38,10 +38,31 @@ class Hit:
     matched: list[str]
 
 
+# Ordinary question words a merchant would use that are not policy terms; they
+# should not count as "unknown concepts" when checking whether the documents
+# cover a question at all.
+QUESTION_WORDS = set(tokens("""
+receive received get getting paid pay pays payment payments money twice thrice once
+yesterday today tomorrow same day sale sold back allow allowed policy right correct
+say says said happen customer shop store merchant large small big refund refunds
+much long soon quickly instant accept take charged cost costs above below over under
+exactly monthly volume lakh rupees one two three hours hour minutes after later
+true wrong still faq tell know need want close closed account closing settle rs inr
+"""))
+
+
 class Retriever:
     def __init__(self, corpus: list[Clause]):
         self.corpus = corpus
         self.index = {id(c): set(tokens(c.text + " " + c.section)) for c in corpus}
+        self.vocabulary = set().union(*self.index.values()) | QUESTION_WORDS
+
+    def unknown_terms(self, question: str) -> tuple[list[str], float]:
+        """Content words of the question that appear nowhere in the documents,
+        and the share of content words that *are* covered."""
+        q = list(dict.fromkeys(tokens(question)))
+        unknown = [t for t in q if t not in self.vocabulary]
+        return unknown, (1 - len(unknown) / len(q)) if q else 0.0
 
     def search(self, question: str, k: int = 5) -> list[Hit]:
         q = list(dict.fromkeys(tokens(question)))

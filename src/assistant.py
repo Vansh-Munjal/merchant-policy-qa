@@ -80,7 +80,18 @@ class Assistant:
             intent = "out_of_scope_date"
         else:
             intent = self._route(question.lower())
-            getattr(self, f"_h_{intent}")(p, as_of, d, hits)
+            unknown, coverage = self.retriever.unknown_terms(question)
+            d.trace["unknown_terms"] = unknown
+            if intent != "missing_reference" and coverage < 0.5:
+                # Most of the question is about things the documents never mention
+                # (e.g. "interest on held settlements"): a topic keyword alone is not
+                # enough evidence to answer.
+                intent = "unsupported"
+                d.cannot_answer = True
+                d.say(f"The supplied documents do not cover this: they never mention {', '.join(repr(u) for u in unknown)}. "
+                      f"I won't guess.")
+            else:
+                getattr(self, f"_h_{intent}")(p, as_of, d, hits)
 
         answer = " ".join(d.lines + d.notes)
         return Answer(
@@ -222,7 +233,7 @@ class Assistant:
             d.cite(*(v21.citations() if "small" in tiers else []), *(v22.citations() if "large" in tiers else []),
                    *v23.citations(), cite(v24.base))
             self._faq_fee_note(d, faq_differs=True)
-            self._pending_note(d, v21, v22, v23)
+            self._pending_note(d, *([v21] if "small" in tiers else []), *([v22] if "large" in tiers else []), v23)
             return
 
         amount = p.amounts[0]
@@ -261,7 +272,7 @@ class Assistant:
                *v23.citations(), cite(v24.base))
         if faq_differs:
             d.cite(cite(self.engine.faq_entry("Q2")))
-        self._pending_note(d, v21, v22, v23)
+        self._pending_note(d, *([v21] if "small" in tiers else []), *([v22] if "large" in tiers else []), v23)
 
     def _faq_fee_note(self, d: Draft, faq_differs: bool) -> None:
         if faq_differs:
@@ -363,7 +374,8 @@ class Assistant:
 
         if amount > per_txn and amount <= enhanced and p.category is not None and p.enhanced_kyc is not False:
             d.cannot_answer = True
-            d.say(f"The documents conflict. Clause 4.2 lets a {p.category} merchant"
+            article = "an" if p.category[0] in "AEIOU" else "a"
+            d.say(f"The documents conflict. Clause 4.2 lets {article} {p.category} merchant"
                   + (" with enhanced KYC" if enhanced_ok else " (only if enhanced KYC is completed, clause 4.4)")
                   + f" accept up to {fmt_inr(enhanced)} per transaction, but clause 4.3 caps each customer account at {fmt_inr(daily)} "
                   f"per day across all UPI transactions, which would block a single {fmt_inr(amount)} payment. Neither clause says "
