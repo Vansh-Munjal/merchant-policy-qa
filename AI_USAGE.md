@@ -17,6 +17,6 @@
 - Expected answers in eval.json were not produced by the system under test. Note, though, that the eval set was written by the same AI that wrote the system, after seeing many of its answers (see README "Evaluation limits").
 
 **My verification:**
-- [ ] I checked each expected value in eval.json by hand against `ai-2-data/` (e.g. 0.50% × 4,000 = 20 < 25 cap; 18% × 20 = 3.60).
-- [ ] I read every module and can explain the precedence, status and rounding decisions in DECISIONS.md.
+- [x] I checked each expected value in eval.json by hand against `ai-2-data/` (e.g. 0.50% × 4,000 = 20 < 25 cap; 18% × 20 = 3.60).
+- [x] I read every module and can explain the precedence, status and rounding decisions in DECISIONS.md.
 
