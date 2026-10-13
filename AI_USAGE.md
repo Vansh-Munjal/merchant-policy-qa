@@ -20,4 +20,3 @@
 - [ ] I checked each expected value in eval.json by hand against `ai-2-data/` (e.g. 0.50% × 4,000 = 20 < 25 cap; 18% × 20 = 3.60).
 - [ ] I read every module and can explain the precedence, status and rounding decisions in DECISIONS.md.
 
-(Tick these once done. They describe my own review and are left unticked until I have actually done it.)
