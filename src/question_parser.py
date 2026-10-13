@@ -40,6 +40,7 @@ class Parsed:
     category: Optional[str] = None        # "Insurance" | "Capital Markets"
     enhanced_kyc: Optional[bool] = None
     instant_addon: Optional[bool] = None
+    asks_kyc_requirement: bool = False    # "do they need enhanced KYC?" is a question, not a fact
     bank_limit: Optional[Decimal] = None
 
 
@@ -151,6 +152,8 @@ def parse(question: str, as_of: date) -> Parsed:
         p.category = "Capital Markets"
     if re.search(r"(without|no|not|haven't|hasn't|incomplete)\s+(?:completed\s+)?(?:enhanced )?kyc", q):
         p.enhanced_kyc = False
+    elif re.search(r"\b(need|needs|require|required|requires|must|have to|has to)\b[^.?]*enhanced kyc", q):
+        p.asks_kyc_requirement = True
     elif "enhanced kyc" in q:
         p.enhanced_kyc = True
     if re.search(r"(without|no|not have|don't have)\s+(?:an?\s+|the\s+)?(?:active\s+)?instant settlement", q):

@@ -29,17 +29,18 @@ Three concrete cases, each reproduced against the current code (`python3 ask.py 
 
 **Fix:** Add the bank's official holiday calendar as a versioned data file and use it in `calculator.is_working_day`. Policy should restate the working-day definition after circular A.
 
-## 3. "Does an insurance merchant need enhanced KYC to accept Rs.1,50,000 in one UPI payment?" (as_of 2026-08-15)
+## 3. Amounts written in words: "What MDR applies to a ninety thousand rupee UPI payment for a large merchant?" (as_of 2026-08-15)
 
-**What the system does:** The parser sees the phrase "enhanced KYC" and records that the merchant *has* it. The system then returns the 4.2 vs 4.3 contradiction with CANNOT_ANSWER. It never gives the direct answer: "yes, clause 4.4 makes enhanced KYC a precondition for the ₹2,00,000 limit".
+**What the system does:** "ninety thousand" isn't recognised as an amount, so the fee handler only describes the rate (0.50%, ₹25 cap, 18% GST) and calculates nothing. The correct answer is ₹25.00 MDR (0.50% × 90,000 = ₹450, capped) + ₹4.50 GST = ₹29.50.
 
-**Why:** Entity extraction is regex-based and can't tell asking about a requirement apart from stating it has been met. A similar parsing gap: "a ninety thousand rupee payment" isn't read as a number, so no fee is calculated.
+**Why:** Amount extraction only recognises digits with ₹/Rs/INR, or digits followed by "rupees"/"lakh". Number words, "1.5L" and "90k" aren't handled.
 
-**Consequence:** Here the system abstains, which is safe, but it misses an answer that is clearly in the documents. In other phrasings the same mistake could wrongly assume KYC is complete and report a higher limit than applies.
+**Consequence:** Mild in this case, since the rule is stated correctly. But a reworded amount means no limit check either, so the system wouldn't flag something like "two lakh fifty thousand" as above every per-transaction limit.
 
-**Fix:** Treat "need/require/must X" as a question about X instead of a fact about the merchant. Add number-word parsing. Optionally, use an LLM only for entity extraction, validate its output against a schema, and keep the arithmetic and citations deterministic.
+**Fix:** Add a small number-words parser (Indian units: thousand, lakh, crore) and the shorthands "k" and "L". Add eval cases with written-out amounts.
 
 ## Fixed since the first version
+- **"Does an insurance merchant need enhanced KYC to accept Rs.1,50,000?"** The parser used to read the phrase as "the merchant has enhanced KYC" and returned the 4.2/4.3 conflict. It now treats "need/require … enhanced KYC" as a question, answers "Yes" from clause 4.4, and still flags the 4.3 conflict (eval E27).
 - **"Is Saturday a working day for settlement?"** This used to get the generic settlement summary. A working-day handler now answers it directly from clauses 1.1 and 1.3 (eval E26).
 - **Refund straddling 01 Sep 2026** ("paid 11 PM on 31 August 2026, refunded 2 hours later on 1 September 2026"). The system used to answer "Yes" based on the first date only. Now, when the question's dates fall on both sides of item D's effective date, it returns CANNOT_ANSWER and explains both readings, because the documents give no transition rule. Covered by eval case E25.
 

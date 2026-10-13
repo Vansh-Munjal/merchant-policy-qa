@@ -627,6 +627,32 @@
           "1.3"
         ]
       ]
+    },
+    {
+      "id": "E27",
+      "adversarial": true,
+      "trap": "Mentioning 'enhanced KYC' in a question about whether it is needed must not be read as the merchant having it.",
+      "question": "Does an insurance merchant need enhanced KYC to accept Rs.1,50,000 in one UPI payment?",
+      "as_of_date": "2026-08-15",
+      "expected_status": "ANSWERED",
+      "expected_answer": "Yes: 4.4 makes enhanced KYC a precondition for the 4.2 enhanced limit; even then 4.3's per-customer daily limit conflicts for a single Rs.1,50,000 payment.",
+      "answer_starts_with": "Yes",
+      "must_contain": [
+        "4.4",
+        "Annexure C",
+        "4.3"
+      ],
+      "must_not_contain": [],
+      "expected_citations": [
+        [
+          "policy_master_v1.md",
+          "4.2"
+        ],
+        [
+          "policy_master_v1.md",
+          "4.4"
+        ]
+      ]
     }
   ]
 }

@@ -414,6 +414,17 @@ class Assistant:
         eff_daily = min(daily, p.bank_limit) if (bank_rule and p.bank_limit is not None) else daily
         d.trace["limits"] = {"per_txn_limit": str(txn_limit), "daily_limit": str(eff_daily), "total": str(total), "count": n}
 
+        if p.asks_kyc_requirement and p.category is not None:
+            d.say(f"Yes. Clause 4.4 says the enhanced limit in 4.2 ({fmt_inr(enhanced)} per transaction for \"Capital Markets\" "
+                  f"and \"Insurance\" merchants) applies only to merchants who have completed enhanced KYC (Annexure C). "
+                  f"Without it, the standard {fmt_inr(per_txn)} per-transaction limit (clause 4.1) applies.")
+            if amount > per_txn:
+                d.say(f"Even with enhanced KYC, a single {fmt_inr(amount)} payment exceeds the per-customer daily limit of "
+                      f"{fmt_inr(daily)} (clause 4.3), and the documents do not say whether 4.2 or 4.3 prevails, so whether "
+                      f"the payment can actually go through needs confirmation from the policy owner.")
+            d.cite(cite(v42.base), cite(v44.base))
+            return
+
         if amount > per_txn and amount <= enhanced and p.category is not None and p.enhanced_kyc is not False:
             d.cannot_answer = True
             article = "an" if p.category[0] in "AEIOU" else "a"
