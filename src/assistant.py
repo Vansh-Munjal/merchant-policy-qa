@@ -130,7 +130,7 @@ class Assistant:
             return "closure"
         if re.search(r"settle|settlement|receive .*money|get (my |the )?(upi |card )?money|payout|credited|when will i (get|receive)", q):
             return "settlement"
-        if re.search(r"\bmdr\b|\bfees?\b|\bgst\b|charges?\b|commission|what do(es)? (they|i|we|the merchant) pay|how much .*pay", q):
+        if re.search(r"\bmdr\b|\bfees?\b|\bgst\b|charge[sd]?\b|\bcosts?\b|commission|what do(es)? (they|i|we|the merchant) pay|how much .*pay", q):
             return "fee"
         if re.search(r"limit|maximum|\bmax\b|twice|in (one|a) day|per day|daily|can (a |the |my )?customers? pay|accept", q):
             return "limits"

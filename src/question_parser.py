@@ -18,9 +18,10 @@ _DATE_RE = re.compile(
     r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(" + _MONTHS + r")[a-z]*\.?,?\s+(\d{4})\b"
     r"|\b(\d{4})-(\d{2})-(\d{2})\b", re.I)
 
-# "Rs.4,000" "Rs 1.5 lakh" "₹1,00,000" "INR 500"
+# "Rs.4,000" "Rs 1.5 lakh" "₹1,00,000" "INR 500" "4000 rupees"
 _AMOUNT_RE = re.compile(
-    r"(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|crore)?", re.I)
+    r"(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|crore)?"
+    r"|([\d,]+(?:\.\d+)?)\s*(lakh|lac|crore)?\s*(?:rupees|inr)\b", re.I)
 
 _WORD_COUNTS = {"once": 1, "twice": 2, "thrice": 3, "two": 2, "three": 3, "four": 4, "five": 5}
 
@@ -72,13 +73,14 @@ def parse(question: str, as_of: date) -> Parsed:
         r"(?:a month|per month|monthly|/month|(?:in )?monthly volume|monthly turnover)", re.I)
     vol_pattern_2 = re.compile(
         r"monthly (?:volume|turnover)(?: of| is)?\s*((?:up to|below|under|above|over|more than|exactly)?\s*)"
-        r"(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|crore)?", re.I)
+        r"(?:(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|crore)?|([\d,]+(?:\.\d+)?)\s*(lakh|lac|crore))", re.I)
     scrubbed = question
     for pat in (vol_pattern, vol_pattern_2):
         m = pat.search(scrubbed)
         if m:
             qualifier = (m.group(1) or "").strip().lower()
-            vol = _to_amount(m.group(2), m.group(3))
+            g = m.groups()
+            vol = _to_amount(g[1], g[2]) if g[1] else _to_amount(g[3], g[4])
             p.monthly_volume = vol
             ten_lakh = 10 * LAKH
             if qualifier in ("above", "over", "more than", "exceeding"):
@@ -102,7 +104,7 @@ def parse(question: str, as_of: date) -> Parsed:
         scrubbed = scrubbed[:bm.start()] + scrubbed[bm.end():]
 
     # --- Transaction amounts --------------------------------------------------------
-    p.amounts = [_to_amount(n, u) for n, u in _AMOUNT_RE.findall(scrubbed)]
+    p.amounts = [_to_amount(n1 or n2, u1 or u2) for n1, u1, n2, u2 in _AMOUNT_RE.findall(scrubbed)]
 
     # --- Payment method -------------------------------------------------------------
     if re.search(r"\b(card|credit card|debit card)s?\b", q):
