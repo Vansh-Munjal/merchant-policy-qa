@@ -2,17 +2,17 @@
 
 Three concrete cases, each reproduced against the current code (`python3 ask.py "<question>" --date <date>`).
 
-## 1. "Is Saturday a working day for settlement?" (as_of 2026-08-15)
+## 1. The assignment's literal Q3: "Same merchant, a Rs.1,50,000 payment. What do they pay?" (as_of 2026-08-15)
 
-**What the system does:** "settle" sends it to the settlement handler, which returns the generic T+0/T+1/T+2 summary with status CONFLICT_RESOLVED. It never answers the yes/no question.
+**What the system does:** It flags the ₹1,00,000 per-transaction limit correctly, but then shows the fee for *both* tiers: small (₹15 cap) and large (₹25 cap). The question refers back to the large merchant from Q2.
 
-**Why it is wrong:** The documents define working days as excluding Sundays and bank holidays (master 1.1), so a Saturday that is not a bank holiday counts as a working day. The answer contains true statements, but none of them answers what was asked.
+**Why:** `ask()` is stateless by design. Each call sees only its own question, so "same merchant" carries no information.
 
-**Missing evidence:** Nothing in the documents. This is an engineering gap: routing is keyword-based, and nothing checks that the answer has the same type (yes/no, amount, date) as the question.
+**Missing evidence:** The merchant's monthly volume, which only exists in the previous question.
 
-**Consequence:** An agent pastes a fluent, cited reply that doesn't answer the merchant's question.
+**Consequence:** Mild, because both figures are correct for their tier, but an agent has to pick the right line. In a chat setting, a wrong pick would quote ₹15 + ₹2.70 instead of ₹25 + ₹4.50.
 
-**Fix:** Add a question-type classifier and a check that rejects any answer of the wrong type. Add a handler for "is X a working day" based on clauses 1.1 and 1.3.
+**Fix:** Add an optional `context` argument (previous parsed entities) that fills in only the missing entities, and record in diagnostics where each value came from. In eval.json, Q3 is written out in full for now (E03).
 
 ## 2. Calculated payout and settlement dates that ignore bank holidays (Q7)
 
@@ -40,8 +40,8 @@ Three concrete cases, each reproduced against the current code (`python3 ask.py 
 **Fix:** Treat "need/require/must X" as a question about X instead of a fact about the merchant. Add number-word parsing. Optionally, use an LLM only for entity extraction, validate its output against a schema, and keep the arithmetic and citations deterministic.
 
 ## Fixed since the first version
+- **"Is Saturday a working day for settlement?"** This used to get the generic settlement summary. A working-day handler now answers it directly from clauses 1.1 and 1.3 (eval E26).
 - **Refund straddling 01 Sep 2026** ("paid 11 PM on 31 August 2026, refunded 2 hours later on 1 September 2026"). The system used to answer "Yes" based on the first date only. Now, when the question's dates fall on both sides of item D's effective date, it returns CANNOT_ANSWER and explains both readings, because the documents give no transition rule. Covered by eval case E25.
 
 ## Also worth knowing
-- **Statelessness:** The assignment's Q3 ("Same merchant, a Rs.1,50,000 payment") has no tier in it. The system shows both tiers instead of carrying over "large" from Q2.
 - **Recall of the fact table:** If a new circular adds a clause, the handlers won't know about it until someone adds a `FACTS` row. The grounding test catches a wrong number but not a missing one.

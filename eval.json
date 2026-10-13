@@ -601,6 +601,32 @@
           "3.3"
         ]
       ]
+    },
+    {
+      "id": "E26",
+      "adversarial": false,
+      "question": "Is Saturday a working day for settlement?",
+      "as_of_date": "2026-08-15",
+      "expected_status": "ANSWERED",
+      "expected_answer": "Yes, unless it is a bank holiday: the only definition (master 1.1) excludes Sundays and bank holidays; no holiday calendar is supplied.",
+      "answer_starts_with": "Yes",
+      "must_contain": [
+        "bank holiday",
+        "Sundays"
+      ],
+      "must_not_contain": [
+        "T+2"
+      ],
+      "expected_citations": [
+        [
+          "policy_master_v1.md",
+          "1.1"
+        ],
+        [
+          "policy_master_v1.md",
+          "1.3"
+        ]
+      ]
     }
   ]
 }

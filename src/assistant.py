@@ -128,6 +128,9 @@ class Assistant:
             return "refund"
         if re.search(r"\bclos(e|ed|ing|ure)\b", q) and "account" in q:
             return "closure"
+        if re.search(r"working day|business day|bank holiday", q) and re.search(
+                r"\b(is|are|does|do)\b.*\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}|holiday)", q):
+            return "working_day"
         if re.search(r"settle|settlement|receive .*money|get (my |the )?(upi |card )?money|payout|credited|when will i (get|receive)", q):
             return "settlement"
         if re.search(r"\bmdr\b|\bfees?\b|\bgst\b|charge[sd]?\b|\bcosts?\b|commission|what do(es)? (they|i|we|the merchant) pay|how much .*pay", q):
@@ -200,6 +203,27 @@ class Assistant:
                       f"counting only Sundays as non-working; if that is a bank holiday, settlement moves to the next working "
                       f"day (clause 1.3). The documents contain no bank-holiday calendar, so check one.")
                 d.cite(cite(v13.base))
+
+    # ------------------------------------------------------------------ working days
+    _WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+    def _h_working_day(self, p: Parsed, as_of: date, d: Draft, hits) -> None:
+        q = p.text.lower()
+        named = find_date(p.text)
+        day = named.strftime("%A").lower() if named else next((w for w in self._WEEKDAYS if w in q), None)
+        label = named.strftime("%a %d %b %Y") if named else (day.title() if day else None)
+        d.cite(cite(self.engine.master["1.1"]), cite(self.engine.master["1.3"]))
+        rule = ("The only definition in the documents is master clause 1.1: working days exclude Sundays and bank "
+                "holidays. (Circular item A replaced clause 1.1's settlement rule without restating this definition; "
+                "clause 1.3 still treats bank holidays as non-working.)")
+        if day is None:
+            d.say(rule)
+        elif day == "sunday":
+            d.say(("No. Sundays" if not named else f"No. {label} is a Sunday, and Sundays") + f" are not working days. {rule}")
+        else:
+            d.say(f"Yes, unless it is a bank holiday. {label} is not a Sunday, and the documents only exclude Sundays "
+                  f"and bank holidays. {rule} The documents contain no bank-holiday calendar, so check the bank's "
+                  f"holiday list for a specific date.")
 
     # ------------------------------------------------------------------ fees
     def _fee_terms(self, tier: str, as_of: date, original: bool = False) -> tuple[Decimal, Optional[Decimal], Decimal]:
